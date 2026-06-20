@@ -42,6 +42,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Diagnostic — inspect the server's env key and test it live (masked)
+app.get('/api/diag', async (req, res) => {
+  const raw = process.env.ANTHROPIC_API_KEY || '';
+  const key = raw.trim();
+  const info = {
+    present: !!raw,
+    rawLength: raw.length,
+    trimmedLength: key.length,
+    hadWhitespace: raw.length !== key.length,
+    startsWith: key.slice(0, 15),
+    endsWith: key.slice(-8),
+    looksValid: key.startsWith('sk-ant-') && key.length > 90,
+    liveTest: 'not-run',
+  };
+  if (key) {
+    try {
+      const anthropic = new Anthropic({ apiKey: key });
+      await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 5,
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      info.liveTest = 'PASS — key works';
+    } catch (e) {
+      info.liveTest = `FAIL — ${e.status || ''} ${e.message}`;
+    }
+  }
+  res.json(info);
+});
+
 // Streaming chat endpoint
 app.post('/api/chat', async (req, res) => {
   const { messages, systemPrompt, model, apiKey } = req.body;
