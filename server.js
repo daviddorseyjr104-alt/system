@@ -14,8 +14,11 @@ const ACCESS_CODE = process.env.ACCESS_CODE || '';
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-const getClient = (apiKey) => {
-  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+const getClient = (clientKey) => {
+  // Server key always wins when set (deterministic for hosted deploys).
+  // Fall back to a client-provided key only when no server key exists.
+  const envKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  const key = envKey || (clientKey || '').trim();
   if (!key) throw new Error('No API key provided');
   return new Anthropic({ apiKey: key });
 };
