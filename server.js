@@ -14,11 +14,21 @@ const ACCESS_CODE = process.env.ACCESS_CODE || '';
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Strip whitespace, surrounding quotes, and a stray leading "=" that
+// commonly sneaks in when pasting "NAME=value" into a hosting dashboard.
+const sanitizeKey = (k) => {
+  let s = (k || '').trim();
+  s = s.replace(/^["']|["']$/g, '');  // surrounding quotes
+  s = s.replace(/^=+/, '');           // leading equals sign(s)
+  s = s.replace(/^ANTHROPIC_API_KEY=/i, ''); // accidental full "NAME=" paste
+  return s.trim();
+};
+
 const getClient = (clientKey) => {
   // Server key always wins when set (deterministic for hosted deploys).
   // Fall back to a client-provided key only when no server key exists.
-  const envKey = (process.env.ANTHROPIC_API_KEY || '').trim();
-  const key = envKey || (clientKey || '').trim();
+  const envKey = sanitizeKey(process.env.ANTHROPIC_API_KEY);
+  const key = envKey || sanitizeKey(clientKey);
   if (!key) throw new Error('No API key provided');
   return new Anthropic({ apiKey: key });
 };
@@ -45,12 +55,12 @@ app.get('/api/health', (req, res) => {
 // Diagnostic — inspect the server's env key and test it live (masked)
 app.get('/api/diag', async (req, res) => {
   const raw = process.env.ANTHROPIC_API_KEY || '';
-  const key = raw.trim();
+  const key = sanitizeKey(raw);
   const info = {
     present: !!raw,
     rawLength: raw.length,
-    trimmedLength: key.length,
-    hadWhitespace: raw.length !== key.length,
+    sanitizedLength: key.length,
+    wasCleaned: raw.trim() !== key,
     startsWith: key.slice(0, 15),
     endsWith: key.slice(-8),
     looksValid: key.startsWith('sk-ant-') && key.length > 90,
