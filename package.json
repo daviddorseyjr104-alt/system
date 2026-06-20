@@ -2,6 +2,9 @@
   "name": "simon-miller-ai-command-center",
   "private": true,
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "concurrently \"node server.js\" \"vite --port 7462\"",
     "build": "vite build",
